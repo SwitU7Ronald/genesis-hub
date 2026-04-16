@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:genesis_util/core/widgets/app_card.dart';
 import 'package:genesis_util/features/clients/domain/entities/client.dart';
 
@@ -124,6 +125,8 @@ class HardwareTab extends StatelessWidget {
     required String emptyText,
   }) {
     final theme = Theme.of(context);
+    final bool isMobile = !kIsWeb && 
+        (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
 
     return AppCard(
       title: title,
@@ -151,14 +154,16 @@ class HardwareTab extends StatelessWidget {
                     label: const Text('Type'),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: onScan,
-                    icon: const Icon(Icons.qr_code_scanner_rounded),
-                    label: const Text('Scan'),
+                if (isMobile) ...[
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: onScan,
+                      icon: const Icon(Icons.qr_code_scanner_rounded),
+                      label: const Text('Scan'),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

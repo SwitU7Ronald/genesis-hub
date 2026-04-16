@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter/foundation.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -10,11 +11,23 @@ class ScannerScreen extends StatefulWidget {
 }
 
 class _ScannerScreenState extends State<ScannerScreen> {
-  final MobileScannerController _controller = MobileScannerController();
+  late final MobileScannerController? _controller;
+  final bool _isSupported = !kIsWeb && 
+      (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isSupported) {
+      _controller = MobileScannerController();
+    } else {
+      _controller = null;
+    }
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
@@ -29,6 +42,42 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_isSupported) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0F172A),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: Colors.white,
+          title: const Text(
+            'Hardware Scanner',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.qr_code_scanner, size: 80, color: Colors.blueAccent),
+              const SizedBox(height: 24),
+              const Text(
+                'Camera scanning is only supported on mobile.',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => context.pop('MOCK_SERIAL_9X8B7A'),
+                icon: const Icon(Icons.bug_report_rounded),
+                label: const Text('Use Mock Serial'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
@@ -43,17 +92,17 @@ class _ScannerScreenState extends State<ScannerScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_on_rounded),
-            onPressed: _controller.toggleTorch,
+            onPressed: _controller!.toggleTorch,
           ),
           IconButton(
             icon: const Icon(Icons.cameraswitch_rounded),
-            onPressed: _controller.switchCamera,
+            onPressed: _controller!.switchCamera,
           ),
         ],
       ),
       body: Stack(
         children: [
-          MobileScanner(controller: _controller, onDetect: _onDetect),
+          MobileScanner(controller: _controller!, onDetect: _onDetect),
           // Designer Overlay
           ColorFiltered(
             colorFilter: ColorFilter.mode(

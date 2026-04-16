@@ -7,6 +7,8 @@ import 'package:genesis_util/app/theme.dart';
 // Internal
 import 'package:genesis_util/core/providers/theme_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:genesis_util/firebase_options.dart';
 
 class GenesisBootloader extends StatefulWidget {
   const GenesisBootloader({super.key});
@@ -27,6 +29,14 @@ class _GenesisBootloaderState extends State<GenesisBootloader> {
 
   Future<void> _initApp() async {
     try {
+      try {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
+      } catch (e) {
+        debugPrint('Firebase placeholder initialization failed or already initialized: $e');
+      }
+
       // Allow max 5 seconds for Native iOS persistence to bind before throwing visually.
       final prefs = await SharedPreferences.getInstance().timeout(
         const Duration(seconds: 5),

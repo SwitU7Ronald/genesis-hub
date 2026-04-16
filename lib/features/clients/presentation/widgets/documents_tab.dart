@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter/foundation.dart';
 import 'package:genesis_util/core/widgets/app_card.dart';
 import 'package:genesis_util/features/clients/domain/entities/client.dart';
 import 'package:genesis_util/features/clients/domain/entities/client_document.dart';
@@ -139,11 +139,16 @@ class DocumentsTab extends StatelessWidget {
         expectedType == DocumentType.quotation ||
         expectedType == DocumentType.agreement ||
         expectedType == DocumentType.selfCertificate;
-    final showScanOptions = isGovType || isBankType || isProfessionalType;
+
+    final isMobile = !kIsWeb && 
+        (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
+
+    final showScanOptions = (isGovType || isBankType || isProfessionalType) && isMobile;
+    
     final isSiteVerification =
-        expectedType == DocumentType.roofPhotoPreInstall ||
+        (expectedType == DocumentType.roofPhotoPreInstall ||
         expectedType == DocumentType.roofPhotoPostInstall ||
-        expectedType == DocumentType.sitePhoto;
+        expectedType == DocumentType.sitePhoto) && isMobile;
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: isWide ? 20 : 12, vertical: 12),
