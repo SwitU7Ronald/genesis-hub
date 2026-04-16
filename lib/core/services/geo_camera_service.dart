@@ -1,23 +1,23 @@
 import 'dart:io';
-import 'dart:typed_data';
-import 'package:image/image.dart' as img;
+
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
+import 'package:intl/intl.dart';
 
 class GeoCameraService {
   /// Reverse geocodes the coordinates to a readable address.
   static Future<String> getAddress(double lat, double lng) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(lat, lng);
+      final placemarks = await placemarkFromCoordinates(lat, lng);
       if (placemarks.isNotEmpty) {
         final p = placemarks.first;
-        return "${p.street}, ${p.subLocality}, ${p.locality}, ${p.postalCode}, ${p.administrativeArea}, ${p.country}";
+        return '${p.street}, ${p.subLocality}, ${p.locality}, ${p.postalCode}, ${p.administrativeArea}, ${p.country}';
       }
-      return "Unknown Address";
+      return 'Unknown Address';
     } catch (e) {
-      return "Error fetching address: $e";
+      return 'Error fetching address: $e';
     }
   }
 
@@ -27,31 +27,34 @@ class GeoCameraService {
     required Position position,
     required String address,
   }) async {
-    final Uint8List bytes = await imageFile.readAsBytes();
-    img.Image? image = img.decodeImage(bytes);
+    final bytes = await imageFile.readAsBytes();
+    final image = img.decodeImage(bytes);
     if (image == null) return imageFile;
 
     final width = image.width;
     final height = image.height;
 
     // 1. Prepare Metadata
-    final DateFormat formatter = DateFormat('EEEE, dd/MM/yyyy hh:mm a');
-    final String timestamp = formatter.format(DateTime.now());
-    final String timezone = "GMT +05:30"; // Standard for India
+    final formatter = DateFormat('EEEE, dd/MM/yyyy hh:mm a');
+    final timestamp = formatter.format(DateTime.now());
+    const timezone = 'GMT +05:30'; // Standard for India
 
     // Split address for better layout
     final addressParts = address.split(', ');
-    final String cityState = addressParts.length > 2 
-        ? "${addressParts[2]}, ${addressParts[4]}, ${addressParts[5]}"
+    final cityState = addressParts.length > 2
+        ? '${addressParts[2]}, ${addressParts[4]}, ${addressParts[5]}'
         : address;
-    final String subDetails = addressParts.take(3).join(', ');
+    final subDetails = addressParts.take(3).join(', ');
 
     // 2. Fetch Map Snippet (Satellite Placeholder or Real API)
     // For production, replace with your Google/Mapbox/Yandex Key
     img.Image? mapSnippet;
     try {
-      final mapUrl = "https://static-maps.yandex.ru/1.x/?ll=${position.longitude},${position.latitude}&size=300,300&z=17&l=sat";
-      final response = await http.get(Uri.parse(mapUrl)).timeout(const Duration(seconds: 5));
+      final mapUrl =
+          'https://static-maps.yandex.ru/1.x/?ll=${position.longitude},${position.latitude}&size=300,300&z=17&l=sat';
+      final response = await http
+          .get(Uri.parse(mapUrl))
+          .timeout(const Duration(seconds: 5));
       if (response.statusCode == 200) {
         mapSnippet = img.decodeImage(response.bodyBytes);
       }
@@ -81,12 +84,29 @@ class GeoCameraService {
     final mapY = boxY + (overlayHeight * 0.07).toInt();
 
     if (mapSnippet != null) {
-      final resizedMap = img.copyResize(mapSnippet, width: mapSize, height: mapSize);
+      final resizedMap = img.copyResize(
+        mapSnippet,
+        width: mapSize,
+        height: mapSize,
+      );
       img.compositeImage(image, resizedMap, dstX: mapX, dstY: mapY);
-      
+
       // Draw Red Pin in center of map
-      img.fillCircle(image, x: mapX + mapSize~/2, y: mapY + mapSize~/2, radius: (mapSize * 0.05).toInt(), color: img.ColorUint8.rgb(255, 0, 0));
-      img.drawString(image, "Google", font: img.arial14, x: mapX + 10, y: mapY + mapSize - 20, color: img.ColorUint8.rgb(255, 255, 255));
+      img.fillCircle(
+        image,
+        x: mapX + mapSize ~/ 2,
+        y: mapY + mapSize ~/ 2,
+        radius: (mapSize * 0.05).toInt(),
+        color: img.ColorUint8.rgb(255, 0, 0),
+      );
+      img.drawString(
+        image,
+        'Google',
+        font: img.arial14,
+        x: mapX + 10,
+        y: mapY + mapSize - 20,
+        color: img.ColorUint8.rgb(255, 255, 255),
+      );
     }
 
     // 6. Draw Metadata
@@ -116,7 +136,8 @@ class GeoCameraService {
     currentY += (overlayHeight * 0.15).toInt();
 
     // Line 3: Lat/Long
-    final latLongStr = "Lat ${position.latitude.toStringAsFixed(6)} Long ${position.longitude.toStringAsFixed(6)}";
+    final latLongStr =
+        'Lat ${position.latitude.toStringAsFixed(6)} Long ${position.longitude.toStringAsFixed(6)}';
     img.drawString(
       image,
       latLongStr,
@@ -130,7 +151,7 @@ class GeoCameraService {
     // Line 4: Timestamp
     img.drawString(
       image,
-      "$timestamp $timezone",
+      '$timestamp $timezone',
       font: img.arial14,
       x: textX,
       y: currentY,
@@ -138,7 +159,7 @@ class GeoCameraService {
     );
 
     // 7. Branding: Top Right of Box
-    const branding = "GPS Map Camera";
+    const branding = 'GPS Map Camera';
     img.drawString(
       image,
       branding,
@@ -149,9 +170,9 @@ class GeoCameraService {
     );
 
     // 8. Finalize Path and File
-    final String newPath = imageFile.path.replaceAll('.jpg', '_geo.jpg');
+    final newPath = imageFile.path.replaceAll('.jpg', '_geo.jpg');
     final List<int> processedBytes = img.encodeJpg(image, quality: 90);
-    final File processedFile = File(newPath);
+    final processedFile = File(newPath);
     await processedFile.writeAsBytes(processedBytes);
 
     return processedFile;

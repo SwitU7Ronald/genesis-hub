@@ -4,9 +4,9 @@ class CurrencyFormatter {
   static final NumberFormat _inrFormatter = NumberFormat('#,##,###', 'en_IN');
 
   /// Formats any numeric value to Indian Rupee comma-separated string (e.g., 1,50,000)
-  static String formatINR(dynamic value) {
+  static String formatINR(Object? value) {
     if (value == null) return '0';
-    
+
     double num;
     if (value is String) {
       num = double.tryParse(value.replaceAll(',', '')) ?? 0.0;
@@ -17,7 +17,7 @@ class CurrencyFormatter {
     } else {
       return '0';
     }
-    
+
     return _inrFormatter.format(num.round());
   }
 

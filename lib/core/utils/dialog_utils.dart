@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
- 
-class DialogUtils {
 
+class DialogUtils {
   static Future<bool> showConfirmation(
     BuildContext context, {
     required String title,
@@ -13,19 +12,28 @@ class DialogUtils {
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         content: Text(message, style: const TextStyle(fontSize: 14)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: Text(cancelLabel, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+            child: Text(
+              cancelLabel,
+              style: const TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(
-              confirmLabel, 
+              confirmLabel,
               style: TextStyle(
-                color: confirmColor ?? Theme.of(context).colorScheme.primary, 
+                color: confirmColor ?? Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -41,7 +49,8 @@ class DialogUtils {
   static Future<bool> showDeleteConfirmation(
     BuildContext context, {
     String title = 'Confirm Deletion',
-    String message = 'Are you sure you want to delete this item? This action cannot be undone.',
+    String message =
+        'Are you sure you want to delete this item? This action cannot be undone.',
     String confirmLabel = 'DELETE',
     String cancelLabel = 'CANCEL',
   }) => showConfirmation(
