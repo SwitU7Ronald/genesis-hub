@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum DocumentType {
   aadhar,
@@ -35,8 +36,14 @@ class ClientDocument {
     type: DocumentType.values.byName(json['type'] as String),
     fileName: json['fileName'] as String,
     fileUrl: json['fileUrl'] as String,
-    uploadedAt: DateTime.parse(json['uploadedAt'] as String),
+    uploadedAt: _parseDateTime(json['uploadedAt']),
   );
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.parse(value);
+    return DateTime.now();
+  }
   final String id;
   final String clientId;
   final DocumentType type;

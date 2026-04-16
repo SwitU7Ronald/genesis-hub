@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:genesis_util/features/clients/domain/entities/hardware_config.dart';
 
 enum SubsidyStatus {
@@ -39,7 +40,7 @@ class Client {
     address: json['address'] as String,
     consumerNumber: json['consumerNumber'] as String,
     systemSizeKwp: (json['systemSizeKwp'] as num).toDouble(),
-    createdAt: DateTime.parse(json['createdAt'] as String),
+    createdAt: _parseDateTime(json['createdAt']),
     latitude: (json['latitude'] as num?)?.toDouble(),
     longitude: (json['longitude'] as num?)?.toDouble(),
     npApplicationNumber: json['npApplicationNumber'] as String?,
@@ -64,6 +65,12 @@ class Client {
       json['subsidyStatus'] as String? ?? 'pendingInstallation',
     ),
   );
+
+  static DateTime _parseDateTime(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.parse(value);
+    return DateTime.now();
+  }
   final String id;
   final String name;
   final String phone;

@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:genesis_util/features/clients/data/repositories/client_repository.dart';
+import 'package:genesis_util/features/clients/data/repositories/firestore_client_repository.dart';
 import 'package:genesis_util/features/clients/domain/entities/client.dart';
 import 'package:genesis_util/features/clients/domain/entities/client_document.dart';
 import 'package:genesis_util/features/clients/domain/entities/hardware_config.dart';
@@ -9,161 +10,133 @@ import 'package:uuid/uuid.dart';
 
 const uuid = Uuid();
 
+// Raw streams from Firestore
+final clientsStreamProvider = StreamProvider<List<Client>>((ref) {
+  return ref.watch(firestoreClientRepositoryProvider).watchClients();
+});
+
 class ClientsNotifier extends Notifier<List<Client>> {
   @override
   List<Client> build() {
-    return ref.watch(clientRepositoryProvider).getClients();
+    final firestoreClients = ref.watch(clientsStreamProvider).value ?? [];
+    
+    // One-time migration logic
+    if (firestoreClients.isEmpty) {
+      _migrateLocalData();
+    }
+    
+    return firestoreClients;
   }
 
-  Future<void> _save() async {
-    try {
-      await ref.read(clientRepositoryProvider).saveClients(state);
-    } catch (e, stackTrace) {
-      log(
-        'Critical Error: Failed to save clients to local storage',
-        error: e,
-        stackTrace: stackTrace,
-      );
+  Future<void> _migrateLocalData() async {
+    final localClients = ref.read(clientRepositoryProvider).getClients();
+    if (localClients.isNotEmpty) {
+      log('Migrating ${localClients.length} clients to Firestore...');
+      await ref.read(firestoreClientRepositoryProvider).syncLocalClients(localClients);
     }
   }
 
-  void addClient(Client client) {
-    state = [...state, client];
-    _save();
+  Future<void> addClient(Client client) async {
+    await ref.read(firestoreClientRepositoryProvider).saveClient(client);
   }
 
-  void deleteClient(String id) {
-    state = state.where((c) => c.id != id).toList();
-    _save();
+  Future<void> deleteClient(String id) async {
+    await ref.read(firestoreClientRepositoryProvider).deleteClient(id);
   }
 
-  void updateClient(Client updatedConfig) {
-    state = state
-        .map((c) => c.id == updatedConfig.id ? updatedConfig : c)
-        .toList();
-    _save();
+  Future<void> updateClient(Client updatedConfig) async {
+    await ref.read(firestoreClientRepositoryProvider).saveClient(updatedConfig);
   }
 
-  void updateFinancials(
+  Future<void> updateFinancials(
     String id, {
     required bool isSubsidy,
     required bool isLoan,
     double? solarCostRs,
     double? initialDepositRs,
-  }) {
-    state = state.map((c) {
-      if (c.id != id) return c;
-      return c.copyWith(
-        solarCostRs: solarCostRs,
-        isSubsidy: isSubsidy,
-        isLoan: isLoan,
-        initialDepositRs: initialDepositRs,
-      );
-    }).toList();
-    _save();
+  }) async {
+    final client = state.firstWhere((c) => c.id == id);
+    final updated = client.copyWith(
+      solarCostRs: solarCostRs,
+      isSubsidy: isSubsidy,
+      isLoan: isLoan,
+      initialDepositRs: initialDepositRs,
+    );
+    await updateClient(updated);
   }
 
-  void updateSystemDNA(
+  Future<void> updateSystemDNA(
     String id, {
     required List<InverterConfiguration> inverters,
     required List<PanelConfiguration> panels,
-  }) {
-    state = state.map((c) {
-      if (c.id != id) return c;
-      final totalKwp = panels.fold(0.0, (sum, p) => sum + p.totalCapacityKwp);
-      return c.copyWith(
-        systemSizeKwp: totalKwp,
-        inverterConfigs: inverters,
-        panelConfigs: panels,
-      );
-    }).toList();
-    _save();
+  }) async {
+    final client = state.firstWhere((c) => c.id == id);
+    final totalKwp = panels.fold(0.0, (sum, p) => sum + p.totalCapacityKwp);
+    final updated = client.copyWith(
+      systemSizeKwp: totalKwp,
+      inverterConfigs: inverters,
+      panelConfigs: panels,
+    );
+    await updateClient(updated);
   }
 
-  void updateContactInfo(
+  Future<void> updateContactInfo(
     String id, {
     required String name,
     required String phone,
     required String address,
-  }) {
-    state = state
-        .map(
-          (c) => c.id == id
-              ? c.copyWith(name: name, phone: phone, address: address)
-              : c,
-        )
-        .toList();
-    _save();
+  }) async {
+    final client = state.firstWhere((c) => c.id == id);
+    final updated = client.copyWith(name: name, phone: phone, address: address);
+    await updateClient(updated);
   }
 
-  void updateUtilityIDs(
+  Future<void> updateUtilityIDs(
     String id, {
     required String consumerNumber,
     String? npApplicationNumber,
-  }) {
-    state = state
-        .map(
-          (c) => c.id == id
-              ? c.copyWith(
-                  consumerNumber: consumerNumber,
-                  npApplicationNumber: npApplicationNumber,
-                )
-              : c,
-        )
-        .toList();
-    _save();
+  }) async {
+    final client = state.firstWhere((c) => c.id == id);
+    final updated = client.copyWith(
+      consumerNumber: consumerNumber,
+      npApplicationNumber: npApplicationNumber,
+    );
+    await updateClient(updated);
   }
 
-  void updateSubsidyStatus(String id, SubsidyStatus status) {
-    state = state
-        .map((c) => c.id == id ? c.copyWith(subsidyStatus: status) : c)
-        .toList();
-    _save();
+  Future<void> updateSubsidyStatus(String id, SubsidyStatus status) async {
+    final client = state.firstWhere((c) => c.id == id);
+    final updated = client.copyWith(subsidyStatus: status);
+    await updateClient(updated);
   }
 
-  void updateVendor(String id, String vendorName) {
-    state = state
-        .map((c) => c.id == id ? c.copyWith(vendorName: vendorName) : c)
-        .toList();
-    _save();
+  Future<void> updateVendor(String id, String vendorName) async {
+    final client = state.firstWhere((c) => c.id == id);
+    final updated = client.copyWith(vendorName: vendorName);
+    await updateClient(updated);
   }
 }
+
+// Documents
+final documentsStreamProvider = StreamProvider.family<List<ClientDocument>, String>((ref, clientId) {
+  return ref.watch(firestoreClientRepositoryProvider).watchDocuments(clientId);
+});
 
 class DocumentsNotifier extends Notifier<List<ClientDocument>> {
   @override
   List<ClientDocument> build() {
-    return ref.watch(clientRepositoryProvider).getDocuments();
+    // Note: Documents are now fetched per-client in real-time.
+    // We keep this global list for backward compatibility if needed, 
+    // but the UI should ideally use documentsStreamProvider(clientId).
+    return []; 
   }
 
-  Future<void> _save() async {
-    try {
-      await ref.read(clientRepositoryProvider).saveDocuments(state);
-    } catch (e, stackTrace) {
-      log(
-        'Critical Error: Failed to save documents to local storage',
-        error: e,
-        stackTrace: stackTrace,
-      );
-    }
+  Future<void> addDocument(ClientDocument doc) async {
+    await ref.read(firestoreClientRepositoryProvider).saveDocument(doc);
   }
 
-  void addDocument(ClientDocument doc) {
-    state = [...state, doc];
-    _save();
-  }
-
-  void removeDocument(String id) {
-    state = state.where((d) => d.id != id).toList();
-    _save();
-  }
-
-  void removeAllForClient(String clientId) {
-    state = state.where((d) => d.clientId != clientId).toList();
-    _save();
-  }
-
-  List<ClientDocument> getDocumentsForClient(String clientId) {
-    return state.where((d) => d.clientId == clientId).toList();
+  Future<void> removeDocument(String id) async {
+    await ref.read(firestoreClientRepositoryProvider).deleteDocument(id);
   }
 }
 

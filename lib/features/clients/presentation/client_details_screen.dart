@@ -865,10 +865,9 @@ class _ClientDetailsScreenState extends ConsumerState<ClientDetailsScreen>
   Widget build(BuildContext context) {
     final clients = ref.watch(clientsProvider);
     final client = clients.where((c) => c.id == widget.clientId).firstOrNull;
-    final allDocs = ref.watch(documentsProvider);
-    final clientDocs = client != null
-        ? allDocs.where((d) => d.clientId == client.id).toList()
-        : <ClientDocument>[];
+    
+    // Real-time Firestore stream for this specific client's documents
+    final clientDocs = ref.watch(documentsStreamProvider(widget.clientId)).value ?? [];
 
     if (client == null) {
       return Scaffold(
